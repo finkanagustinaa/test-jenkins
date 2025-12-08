@@ -1,0 +1,57 @@
+pipeline {
+    // Menentukan agen mana pun yang tersedia
+    agent any
+
+    stages {
+        // TAHAP 1: Persiapan dan Instalasi Dependensi
+        stage('Prepare and Install Composer') {
+            steps {
+                echo 'Mengambil kode dari GitHub...'
+                // Catatan: Jika Anda menggunakan 'Pipeline script from SCM' di Jenkins,
+                // langkah 'git checkout' sudah dilakukan secara otomatis.
+                
+                // Instal dependensi Composer (Termasuk PHPUnit)
+                echo 'Instalasi dependensi Composer...'
+                // --no-dev: Jika Anda ingin mengabaikan dependensi pengembangan (termasuk PHPUnit) di produksi.
+                // KARENA INI UNTUK TEST, sebaiknya gunakan sh 'composer install'
+                sh 'composer install' 
+            }
+        }
+
+        // TAHAP 2: Menjalankan Unit Tests (Tugas 3: PHPUnit)
+        stage('Run PHPUnit Tests') {
+            steps {
+                echo 'Menjalankan PHPUnit dan membuat laporan JUnit XML...'
+                // Membuat folder 'target' untuk menyimpan laporan XML
+                sh 'mkdir -p target'
+                // Menjalankan PHPUnit dan mengarahkan output ke file XML
+                // Perintah ini akan menyebabkan pipeline GAGAL jika ada test yang gagal
+                sh './vendor/bin/phpunit --log-junit target/TEST-results.xml' 
+            }
+        }
+
+        // TAHAP 3: Menjalankan Skrip PHP (Tugas 2: powershell 'php index.php')
+        stage('Run PHP Script') {
+            steps {
+                echo 'Menjalankan index.php...'
+                // Perintah sesuai permintaan Anda
+                powershell 'php index.php'
+            }
+        }
+    }
+
+    // Blok POST: Tindakan yang selalu dijalankan setelah semua tahap selesai
+    post {
+        always {
+            // Memublikasikan hasil test dari file XML
+            echo 'Mempublikasikan hasil test PHPUnit...'
+            junit 'target/*.xml'
+        }
+        success {
+            echo 'Pipeline berhasil! CI/CD Sempurna.'
+        }
+        failure {
+            echo 'Pipeline GAGAL! Periksa Unit Test atau kesalahan skrip.'
+        }
+    }
+}
